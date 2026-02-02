@@ -1,0 +1,40 @@
+@startuml
+' TicketFlow - Component View (Order Service)
+' Uses C4-PlantUML components
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title TicketFlow — Component View (Order Service)
+
+Container_Boundary(order, "Order Service") {
+
+  Component(order_api, "Order API (Controller)", "REST", "Validates requests and exposes /orders endpoints")
+  Component(checkout_app, "Checkout Application Service", "Application", "Orchestrates order creation and checkout flow")
+  Component(lock_mgr, "Seat Lock Manager", "Domain", "Acquires/releases seat locks with TTL; prevents double-selling")
+  Component(pricing, "Pricing Policy", "Domain", "Calculates amount based on seat + event pricing rules")
+  Component(order_repo, "Order Repository", "Data Access", "Persists orders; hides DB schema")
+  Component(outbox, "Outbox Publisher", "Infra", "Reliable event publishing (outbox pattern)")
+  Component(event_client, "Event Service Client", "HTTP Client", "Reads seat availability and confirms reservations")
+  Component(payment_client, "Payment Service Client", "HTTP Client", "Starts payment init for an order")
+}
+
+ContainerDb(order_db, "Order DB", "Relational DB", "Order + reservation tables")
+ContainerDb(redis, "Redis", "In-memory", "Seat locks (TTL) and short-lived checkout state")
+Container(queue, "Event Bus", "Messaging", "orders.created topic")
+Container(event, "Event & Seat Service", "Service", "Seat map + availability")
+Container(payment, "Payment Service", "Service", "Payment init")
+
+Rel(order_api, checkout_app, "Calls", "in-process")
+Rel(checkout_app, lock_mgr, "Locks seats", "in-process")
+Rel(checkout_app, pricing, "Calculates price", "in-process")
+Rel(checkout_app, order_repo, "Creates/updates order", "in-process")
+Rel(checkout_app, event_client, "Checks availability / reserves", "HTTPS/JSON")
+Rel(checkout_app, payment_client, "Initiates payment", "HTTPS/JSON")
+Rel(order_repo, order_db, "Read/write", "SQL")
+Rel(lock_mgr, redis, "SETNX + TTL (lock)", "TCP")
+Rel(outbox, queue, "Publishes OrderCreated", "Events")
+Rel(checkout_app, outbox, "Writes event to outbox", "in-process")
+
+Rel(event_client, event, "Calls", "HTTPS/JSON")
+Rel(payment_client, payment, "Calls", "HTTPS/JSON")
+
+@enduml

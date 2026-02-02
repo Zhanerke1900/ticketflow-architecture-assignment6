@@ -1,0 +1,36 @@
+@startuml
+' TicketFlow - Sequence: Validate at Entry
+autonumber
+actor "Door Staff" as staff
+participant "Scanner App / UI" as ui
+participant "BFF/API Gateway" as bff
+participant "Validation Service" as val
+participant "Ticket Service" as ticket
+participant "Redis Cache" as redis
+participant "Validation DB" as valdb
+participant "Event Bus" as bus
+
+staff -> ui: Scan QR
+ui -> bff: POST /validate {qrPayload}
+bff -> val: POST /validate {qrPayload}
+
+val -> val: Parse payload + anti-replay check
+val -> redis: Check replay token / recent scans
+redis --> val: OK / Not seen
+
+val -> ticket: Get ticket status / details
+ticket --> val: Ticket {status, ticketId, orderId}
+
+alt valid and UNUSED
+  val -> ticket: Mark USED
+  ticket --> val: OK
+  val -> valdb: Insert ScanLog
+  val -> bus: Publish TicketValidated (tickets.validated)
+  val --> bff: 200 {valid:true, status:"USED"}
+else invalid / already USED
+  val -> valdb: Insert ScanLog (rejected)
+  val --> bff: 200 {valid:false, status:"REJECTED"}
+end
+
+bff --> ui: Response
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+' TicketFlow - Sequence: Buy Ticket
+autonumber
+actor Customer as customer
+participant "Web/Mobile UI" as ui
+participant "BFF/API Gateway" as bff
+participant "Order Service" as order
+participant "Event & Seat Service" as event
+participant "Payment Service" as pay
+participant "Payment Provider" as provider
+participant "Event Bus" as bus
+participant "Ticket Service" as ticket
+participant "Email/SMS/Push Provider" as notif
+
+customer -> ui: Select event + seats
+ui -> bff: POST /orders {eventId, seatIds[]}
+bff -> order: POST /orders {eventId, seatIds[]}
+
+order -> event: Check availability + reserve seats
+event --> order: OK (reserved)
+
+order -> order: Create Order (PENDING_PAYMENT)\nLock seats (TTL)
+order -> bus: Publish OrderCreated (orders.created)
+order --> bff: 201 {orderId, status}
+bff --> ui: 201 {orderId, status}
+
+ui -> bff: POST /payments/{orderId}/init {returnUrl}
+bff -> pay: POST /payments/{orderId}/init
+
+pay -> provider: Create checkout session
+provider --> pay: checkoutUrl
+pay --> bff: 200 {checkoutUrl}
+bff --> ui: 200 {checkoutUrl}
+
+customer -> provider: Pay (redirect/hosted)
+provider -> pay: POST /payments/webhook (signed payload)
+pay -> pay: Verify signature + idempotency
+alt Payment confirmed
+  pay -> bus: Publish PaymentConfirmed (payments.confirmed)
+  bus -> ticket: Consume PaymentConfirmed
+  ticket -> ticket: Create Ticket + QR payload
+  ticket -> notif: Send ticket + confirmation
+  notif --> ticket: OK
+else Payment failed
+  pay -> bus: Publish PaymentFailed (payments.failed)
+end
+
+@enduml

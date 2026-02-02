@@ -1,0 +1,48 @@
+@startuml
+' TicketFlow - Use Case Diagram
+left to right direction
+skinparam packageStyle rectangle
+
+actor Customer as customer
+actor Organizer as organizer
+actor "Door Staff" as staff
+
+rectangle "TicketFlow" {
+  usecase "Browse Events" as UC1
+  usecase "View Seat Map" as UC2
+  usecase "Create Order / Lock Seats" as UC3
+  usecase "Pay for Order" as UC4
+  usecase "Receive Ticket (QR)" as UC5
+  usecase "View Ticket Wallet" as UC6
+
+  usecase "Create / Manage Event" as UC7
+  usecase "Manage Seats & Pricing" as UC8
+  usecase "View Sales Reports" as UC9
+
+  usecase "Validate Ticket QR" as UC10
+  usecase "Mark Ticket as USED" as UC11
+  usecase "Log Scan (Audit)" as UC12
+}
+
+customer --> UC1
+customer --> UC2
+customer --> UC3
+customer --> UC4
+customer --> UC5
+customer --> UC6
+
+organizer --> UC7
+organizer --> UC8
+organizer --> UC9
+
+staff --> UC10
+staff --> UC11
+staff --> UC12
+
+UC3 ..> UC2 : <<includes>>
+UC4 ..> UC3 : <<includes>>
+UC5 ..> UC4 : <<includes>>
+UC11 ..> UC10 : <<includes>>
+UC12 ..> UC10 : <<includes>>
+
+@enduml

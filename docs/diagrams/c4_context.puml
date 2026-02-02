@@ -1,0 +1,24 @@
+@startuml
+' TicketFlow - C4 Context Diagram
+' Uses C4-PlantUML (remote includes)
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title TicketFlow — C4 Context
+
+Person(customer, "Customer / Dancer", "Browses events, buys tickets, stores QR ticket")
+Person(organizer, "Organizer", "Creates events, manages seats/pricing, views sales reports")
+Person(staff, "Door Staff", "Scans QR at entry and validates tickets")
+
+System(ticketflow, "TicketFlow (Event Ticketing System)", "Web/mobile system for online ticket sales and QR validation")
+
+System_Ext(payment, "Payment Provider", "External online payment gateway")
+System_Ext(notif, "Email/SMS/Push Provider", "Sends confirmations and ticket delivery messages")
+
+Rel(customer, ticketflow, "Browse events, purchase tickets, view wallet", "HTTPS")
+Rel(organizer, ticketflow, "Manage events, seats, pricing, reports", "HTTPS")
+Rel(staff, ticketflow, "Validate QR, mark ticket USED", "HTTPS")
+
+Rel(ticketflow, payment, "Payment init + webhook confirmation", "HTTPS")
+Rel(ticketflow, notif, "Send notifications (ticket, status)", "HTTPS")
+
+@enduml

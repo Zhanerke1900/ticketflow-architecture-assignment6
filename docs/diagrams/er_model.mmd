@@ -1,0 +1,100 @@
+erDiagram
+  USER {
+    uuid id PK
+    string email
+    string password_hash
+    string name
+    datetime created_at
+  }
+
+  ORGANIZER_PROFILE {
+    uuid id PK
+    uuid user_id FK
+    string org_name
+    string phone
+  }
+
+  VENUE {
+    uuid id PK
+    string name
+    string city
+    string address
+  }
+
+  EVENT {
+    uuid id PK
+    uuid organizer_id FK
+    uuid venue_id FK
+    string title
+    datetime starts_at
+    string status
+  }
+
+  SEAT {
+    uuid id PK
+    uuid venue_id FK
+    string section
+    string row
+    string number
+  }
+
+  ORDER {
+    uuid id PK
+    uuid user_id FK
+    uuid event_id FK
+    decimal amount
+    string status
+    datetime created_at
+    datetime expires_at
+  }
+
+  ORDER_SEAT {
+    uuid order_id FK
+    uuid seat_id FK
+    string reservation_status
+  }
+
+  PAYMENT {
+    uuid id PK
+    uuid order_id FK
+    string provider_payment_id
+    string status
+    datetime paid_at
+  }
+
+  WEBHOOK_EVENT {
+    uuid id PK
+    string provider_event_id
+    string signature_hash
+    datetime received_at
+    bool processed
+  }
+
+  TICKET {
+    uuid id PK
+    uuid order_id FK
+    string qr_hash
+    string status
+    datetime issued_at
+    datetime used_at
+  }
+
+  SCAN_LOG {
+    uuid id PK
+    uuid ticket_id FK
+    datetime scanned_at
+    string result
+    string device_id
+  }
+
+  USER ||--o{ ORDER : places
+  USER ||--o| ORGANIZER_PROFILE : has
+  ORGANIZER_PROFILE ||--o{ EVENT : creates
+  VENUE ||--o{ EVENT : hosts
+  VENUE ||--o{ SEAT : contains
+  EVENT ||--o{ ORDER : for
+  ORDER ||--o{ ORDER_SEAT : includes
+  SEAT ||--o{ ORDER_SEAT : reserved_in
+  ORDER ||--o| PAYMENT : paid_by
+  ORDER ||--o| TICKET : issues
+  TICKET ||--o{ SCAN_LOG : scanned

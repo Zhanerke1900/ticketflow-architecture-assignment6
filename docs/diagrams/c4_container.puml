@@ -1,0 +1,70 @@
+@startuml
+' TicketFlow - C4 Container Diagram
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title TicketFlow — C4 Container
+
+Person(customer, "Customer / Dancer", "Buys tickets, stores QR ticket")
+Person(organizer, "Organizer", "Manages events and sales")
+Person(staff, "Door Staff", "Validates tickets at entry")
+
+System_Boundary(s1, "TicketFlow") {
+
+  Container(ui, "Web / Mobile UI", "Web / Mobile", "Browse, select seats, checkout UX, ticket wallet")
+  Container(bff, "BFF / API Gateway", "API Gateway", "Single entry point; request shaping; auth; rate limiting")
+
+  Container(auth, "Auth & Users Service", "Service", "Accounts, JWT, organizer identity")
+  Container(event, "Event & Seat Service", "Service", "Events, venues, seat maps, availability read model")
+  Container(order, "Order Service", "Service", "Checkout orchestration; seat locks; pricing; order lifecycle")
+  Container(payment, "Payment Service", "Service", "Provider adapter; webhooks; idempotency; payment state")
+  Container(ticket, "Ticket Service", "Service", "Ticket issuance; QR payload rules; ticket lifecycle")
+  Container(validation, "Validation Service", "Service", "Fast QR validation; anti-replay; scan logging")
+
+  ContainerDb(authdb, "Auth DB", "Relational DB", "Users + organizer profiles")
+  ContainerDb(eventdb, "Event DB", "Relational DB", "Events + venues + seats")
+  ContainerDb(orderdb, "Order DB", "Relational DB", "Orders + reservations")
+  ContainerDb(paymentdb, "Payment DB", "Relational DB", "Payments + webhook events")
+  ContainerDb(ticketdb, "Ticket DB", "Relational DB", "Tickets")
+  ContainerDb(valdb, "Validation DB", "Relational DB", "Scan logs")
+
+  ContainerDb(redis, "Redis Cache", "In-memory DB", "Seat-map caching, seat locks (TTL), validation cache")
+  Container(queue, "Event Bus", "Messaging", "Async integration events (orders.*, payments.*, tickets.*)")
+}
+
+System_Ext(payprov, "Payment Provider", "External Gateway", "Online payment processing + webhooks")
+System_Ext(notif, "Email/SMS/Push Provider", "External", "Notifications and ticket delivery")
+
+Rel(customer, ui, "Uses", "HTTPS")
+Rel(organizer, ui, "Uses", "HTTPS")
+Rel(staff, ui, "Uses", "HTTPS")
+
+Rel(ui, bff, "Calls", "HTTPS/JSON")
+
+Rel(bff, auth, "Auth APIs", "HTTPS/JSON")
+Rel(bff, event, "Event browsing + seat map", "HTTPS/JSON")
+Rel(bff, order, "Checkout + order lifecycle", "HTTPS/JSON")
+Rel(bff, ticket, "Ticket wallet", "HTTPS/JSON")
+Rel(bff, validation, "Validate QR", "HTTPS/JSON")
+
+Rel(order, event, "Reserve/confirm seats", "HTTPS/JSON")
+Rel(order, payment, "Start payment (init)", "HTTPS/JSON")
+Rel(payment, payprov, "Create checkout + receive webhooks", "HTTPS")
+Rel(payment, queue, "Publish PaymentConfirmed/Failed", "Events")
+Rel(order, queue, "Publish OrderCreated", "Events")
+Rel(ticket, queue, "Consume payment/order events; publish TicketIssued", "Events")
+Rel(ticket, notif, "Deliver ticket (email/SMS/push)", "HTTPS")
+Rel(validation, ticket, "Get ticket status / QR rules", "HTTPS/JSON")
+Rel(validation, queue, "Publish TicketValidated", "Events")
+
+Rel(auth, authdb, "Read/write", "SQL")
+Rel(event, eventdb, "Read/write", "SQL")
+Rel(order, orderdb, "Read/write", "SQL")
+Rel(payment, paymentdb, "Read/write", "SQL")
+Rel(ticket, ticketdb, "Read/write", "SQL")
+Rel(validation, valdb, "Read/write", "SQL")
+
+Rel(event, redis, "Cache seat maps", "TCP")
+Rel(order, redis, "Seat locks (TTL)", "TCP")
+Rel(validation, redis, "Validation cache / anti-replay", "TCP")
+
+@enduml
